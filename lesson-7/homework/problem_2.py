@@ -1,8 +1,6 @@
 import json
-import csv
 import os
 
-# Employee Class
 class Employee:
     def __init__(self, employee_id, name, position, salary):
         self.employee_id = employee_id
@@ -10,148 +8,172 @@ class Employee:
         self.position = position
         self.salary = salary
 
-    def __str__(self):
-        return f"{self.employee_id}, {self.name}, {self.position}, {self.salary}"
-
-# Employee Manager Class
-class EmployeeManager:
-    FILE_NAME = "employees.txt"
+    def to_dict(self):
+        return {
+            "employee_id": self.employee_id,
+            "name": self.name,
+            "position": self.position,
+            "salary": self.salary,
+        }
 
     @staticmethod
-    def add_employee():
-        emp_id = input("Enter Employee ID: ")
-        name = input("Enter Name: ")
-        position = input("Enter Position: ")
-        salary = input("Enter Salary: ")
-        with open(EmployeeManager.FILE_NAME, "a") as file:
-            file.write(f"{emp_id},{name},{position},{salary}\n")
+    def from_dict(data):
+        return Employee(data["employee_id"], data["name"], data["position"], data["salary"])
+
+class EmployeeManager:
+    FILE_PATH = "employees.json"
+
+    def __init__(self):
+        self.employees = self.load_employees()
+
+    def load_employees(self):
+        if os.path.exists(self.FILE_PATH):
+            with open(self.FILE_PATH, "r") as file:
+                return [Employee.from_dict(emp) for emp in json.load(file)]
+        return []
+
+    def save_employees(self):
+        with open(self.FILE_PATH, "w") as file:
+            json.dump([emp.to_dict() for emp in self.employees], file, indent=4)
+
+    def add_employee(self, employee):
+        if any(emp.employee_id == employee.employee_id for emp in self.employees):
+            print("Employee ID must be unique!")
+            return
+        self.employees.append(employee)
+        self.save_employees()
         print("Employee added successfully!")
 
-    @staticmethod
-    def view_all_employees():
-        if not os.path.exists(EmployeeManager.FILE_NAME):
-            print("No records found.")
-            return
-        with open(EmployeeManager.FILE_NAME, "r") as file:
-            print("Employee Records:")
-            print(file.read())
+    def view_employees(self):
+        for emp in self.employees:
+            print(emp.to_dict())
 
-    @staticmethod
-    def search_employee():
-        emp_id = input("Enter Employee ID to search: ")
-        with open(EmployeeManager.FILE_NAME, "r") as file:
-            for line in file:
-                if line.startswith(emp_id + ","):
-                    print("Employee Found:", line.strip())
-                    return
-        print("Employee not found.")
+    def search_employee(self, employee_id):
+        for emp in self.employees:
+            if emp.employee_id == employee_id:
+                print(emp.to_dict())
+                return emp
+        print("Employee not found!")
 
-    @staticmethod
-    def delete_employee():
-        emp_id = input("Enter Employee ID to delete: ")
-        lines = []
-        found = False
-        with open(EmployeeManager.FILE_NAME, "r") as file:
-            lines = file.readlines()
-        with open(EmployeeManager.FILE_NAME, "w") as file:
-            for line in lines:
-                if not line.startswith(emp_id + ","):
-                    file.write(line)
-                else:
-                    found = True
-        print("Employee deleted successfully!" if found else "Employee not found.")
+    def update_employee(self, employee_id, name=None, position=None, salary=None):
+        for emp in self.employees:
+            if emp.employee_id == employee_id:
+                if name:
+                    emp.name = name
+                if position:
+                    emp.position = position
+                if salary:
+                    emp.salary = salary
+                self.save_employees()
+                print("Employee updated successfully!")
+                return
+        print("Employee not found!")
 
-    @staticmethod
-    def menu():
-        while True:
-            print("\n1. Add Employee\n2. View Employees\n3. Search Employee\n4. Delete Employee\n5. Exit")
-            choice = input("Enter your choice: ")
-            if choice == "1":
-                EmployeeManager.add_employee()
-            elif choice == "2":
-                EmployeeManager.view_all_employees()
-            elif choice == "3":
-                EmployeeManager.search_employee()
-            elif choice == "4":
-                EmployeeManager.delete_employee()
-            elif choice == "5":
-                print("Goodbye!")
-                break
-            else:
-                print("Invalid choice. Try again.")
+    def delete_employee(self, employee_id):
+        self.employees = [emp for emp in self.employees if emp.employee_id != employee_id]
+        self.save_employees()
+        print("Employee deleted successfully!")
 
-# To-Do Task Class
-class Task:
-    def __init__(self, task_id, title, description, due_date, status):
-        self.task_id = task_id
-        self.title = title
-        self.description = description
-        self.due_date = due_date
-        self.status = status
 
-    def __str__(self):
-        return f"{self.task_id}, {self.title}, {self.description}, {self.due_date}, {self.status}"
-
-# To-Do Manager Class
 class ToDoManager:
-    FILE_NAME = "tasks.json"
+    FILE_PATH = "tasks.json"
 
-    @staticmethod
-    def load_tasks():
-        if os.path.exists(ToDoManager.FILE_NAME):
-            with open(ToDoManager.FILE_NAME, "r") as file:
+    def __init__(self):
+        self.tasks = self.load_tasks()
+
+    def load_tasks(self):
+        if os.path.exists(self.FILE_PATH):
+            with open(self.FILE_PATH, "r") as file:
                 return json.load(file)
         return []
 
-    @staticmethod
-    def save_tasks(tasks):
-        with open(ToDoManager.FILE_NAME, "w") as file:
-            json.dump(tasks, file, indent=4)
+    def save_tasks(self):
+        with open(self.FILE_PATH, "w") as file:
+            json.dump(self.tasks, file, indent=4)
 
-    @staticmethod
-    def add_task():
-        task_id = input("Enter Task ID: ")
-        title = input("Enter Title: ")
-        description = input("Enter Description: ")
-        due_date = input("Enter Due Date (YYYY-MM-DD): ")
-        status = input("Enter Status (Pending/In Progress/Completed): ")
-        tasks = ToDoManager.load_tasks()
-        tasks.append({"task_id": task_id, "title": title, "description": description, "due_date": due_date, "status": status})
-        ToDoManager.save_tasks(tasks)
+    def add_task(self, task_id, title, description, due_date, status):
+        if any(task["task_id"] == task_id for task in self.tasks):
+            print("Task ID must be unique!")
+            return
+        self.tasks.append({"task_id": task_id, "title": title, "description": description, "due_date": due_date, "status": status})
+        self.save_tasks()
         print("Task added successfully!")
 
-    @staticmethod
-    def view_tasks():
-        tasks = ToDoManager.load_tasks()
-        if not tasks:
-            print("No tasks found.")
-            return
-        print("Tasks:")
-        for task in tasks:
-            print(f"{task['task_id']}, {task['title']}, {task['description']}, {task['due_date']}, {task['status']}")
+    def view_tasks(self):
+        for task in self.tasks:
+            print(task)
 
-    @staticmethod
-    def menu():
-        while True:
-            print("\n1. Add Task\n2. View Tasks\n3. Exit")
-            choice = input("Enter your choice: ")
-            if choice == "1":
-                ToDoManager.add_task()
-            elif choice == "2":
-                ToDoManager.view_tasks()
-            elif choice == "3":
-                print("Goodbye!")
-                break
-            else:
-                print("Invalid choice. Try again.")
+    def update_task(self, task_id, title=None, description=None, due_date=None, status=None):
+        for task in self.tasks:
+            if task["task_id"] == task_id:
+                if title:
+                    task["title"] = title
+                if description:
+                    task["description"] = description
+                if due_date:
+                    task["due_date"] = due_date
+                if status:
+                    task["status"] = status
+                self.save_tasks()
+                print("Task updated successfully!")
+                return
+        print("Task not found!")
 
-# Run the Programs
+    def delete_task(self, task_id):
+        self.tasks = [task for task in self.tasks if task["task_id"] != task_id]
+        self.save_tasks()
+        print("Task deleted successfully!")
+
+    def filter_tasks(self, status):
+        filtered_tasks = [task for task in self.tasks if task["status"] == status]
+        for task in filtered_tasks:
+            print(task)
+
+
+def main():
+    emp_manager = EmployeeManager()
+    todo_manager = ToDoManager()
+
+    while True:
+        print("""
+        1. Add Employee
+        2. View Employees
+        3. Search Employee
+        4. Update Employee
+        5. Delete Employee
+        6. Add Task
+        7. View Tasks
+        8. Update Task
+        9. Delete Task
+        10. Filter Tasks
+        11. Exit
+        """)
+        choice = input("Enter your choice: ")
+
+        if choice == "1":
+            emp_manager.add_employee(Employee(input("ID: "), input("Name: "), input("Position: "), input("Salary: ")))
+        elif choice == "2":
+            emp_manager.view_employees()
+        elif choice == "3":
+            emp_manager.search_employee(input("Enter Employee ID: "))
+        elif choice == "4":
+            emp_manager.update_employee(input("ID: "), input("New Name: "), input("New Position: "), input("New Salary: "))
+        elif choice == "5":
+            emp_manager.delete_employee(input("ID: "))
+        elif choice == "6":
+            todo_manager.add_task(input("Task ID: "), input("Title: "), input("Description: "), input("Due Date: "), input("Status: "))
+        elif choice == "7":
+            todo_manager.view_tasks()
+        elif choice == "8":
+            todo_manager.update_task(input("Task ID: "), input("New Title: "), input("New Description: "), input("New Due Date: "), input("New Status: "))
+        elif choice == "9":
+            todo_manager.delete_task(input("Task ID: "))
+        elif choice == "10":
+            todo_manager.filter_tasks(input("Status: "))
+        elif choice == "11":
+            break
+        else:
+            print("Invalid choice, try again!")
+
 if __name__ == "__main__":
-    print("Welcome!\n1. Employee Manager\n2. To-Do Manager\n3. Exit")
-    app_choice = input("Enter your choice: ")
-    if app_choice == "1":
-        EmployeeManager.menu()
-    elif app_choice == "2":
-        ToDoManager.menu()
-    else:
-        print("Goodbye!")
+    main()
